@@ -1,0 +1,95 @@
+# -- Override the chart name
+nameOverride: ""
+# -- Override the fully qualified app name
+fullnameOverride: ""
+
+image:
+  # -- Container image repository (pending image selection)
+  repository: ""
+  # -- Container image tag (pending image selection)
+  tag: ""
+  # -- Image pull policy
+  pullPolicy: IfNotPresent
+# -- Image pull secrets for private registries
+imagePullSecrets: []
+# -- Additional pod annotations
+podAnnotations: {}
+# -- Additional pod labels
+podLabels: {}
+# -- Additional environment variables as key-value pairs
+extraEnv: {}
+# -- Existing secret to use as environment variables
+extraEnvSecret: ""
+
+# -- Node selector for pod assignment
+nodeSelector: {}
+# -- Tolerations for pod assignment
+tolerations: []
+# -- Affinity and anti-affinity rules
+affinity: {}
+# -- Topology spread constraints
+topologySpreadConstraints: []
+# -- Priority class name
+priorityClassName: ""
+
+# -- Container security context
+securityContext:
+  runAsNonRoot: true
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+# -- Pod security context
+podSecurityContext: {}
+
+# -- Number of replicas
+replicaCount: 1
+# -- Container resource requests and limits
+resources: {}
+# -- Workload update strategy (pending workload implementation)
+updateStrategy: {}
+# -- Termination grace period in seconds
+terminationGracePeriodSeconds: 30
+
+podDisruptionBudget:
+  # -- Enable pod disruption budget
+  enabled: false
+  # -- Minimum available pods (mutually exclusive with maxUnavailable)
+  minAvailable: 1
+  # -- Maximum unavailable pods (empty string leaves minAvailable in use)
+  maxUnavailable: ""
+
+serviceAccount:
+  # -- Create a service account
+  create: false
+  # -- Service account name (generated if empty and create is true)
+  name: ""
+  # -- Service account annotations
+  annotations: {}
+
+service:
+  # -- Service type
+  type: ClusterIP
+  # -- Service port (pending networking implementation)
+  port: 8081
+  # -- Service annotations
+  annotations: {}
+  # -- Service labels
+  labels: {}
+
+# -- Liveness probe configuration
+livenessProbe: {}
+# -- Readiness probe configuration
+readinessProbe: {}
+# -- Startup probe configuration
+startupProbe: {}
+
+# -- Additional volumes
+extraVolumes: []
+# -- Additional volume mounts
+extraVolumeMounts: []
+# -- Additional sidecar containers
+extraContainers: []
+# -- Additional init containers
+extraInitContainers: []

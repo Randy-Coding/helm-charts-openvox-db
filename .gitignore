@@ -13,3 +13,6 @@ charts/*/tmpcharts/
 # OS
 .DS_Store
 Thumbs.db
+
+#git
+.gitconfig

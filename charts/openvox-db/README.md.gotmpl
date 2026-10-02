@@ -1,0 +1,17 @@
+{{ template "chart.header" . }}
+
+{{ template "chart.description" . }}
+
+## Status
+
+This chart is scaffolding for the OpenVox DB implementation. It does not deploy
+OpenVox DB yet. Only optional service-account creation is implemented. Workload,
+networking, database connectivity, TLS, storage, and probe configuration are pending.
+The image repository, image tag, and application version will be selected during implementation.
+
+The values below include every required value from `docs/chart-standards.md`,
+including workload settings and secure defaults. Only naming overrides and
+service-account settings are currently wired to templates. Remaining values
+will be wired during implementation.
+
+{{ template "chart.valuesSection" . }}
