@@ -17,9 +17,9 @@ templates. Remaining values will be wired during implementation.
 ## Validation
 
 ```bash
-helm lint charts/openvox-db --strict
-helm unittest charts/openvox-db
-helm-docs --chart-search-root charts/openvox-db
+helm lint charts/openvoxdb --strict
+helm unittest charts/openvoxdb
+helm-docs --chart-search-root charts/openvoxdb
 ```
 
 `README.md.gotmpl` supplies the status text and values table for helm-docs regeneration.

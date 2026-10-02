@@ -1,0 +1,108 @@
+# -- Override the chart name
+nameOverride: ""
+# -- Override the fully qualified app name
+fullnameOverride: ""
+
+# -- Container image repository
+image:
+  # -- Image repository
+  repository: ""
+  # -- Image tag
+  tag: ""
+  # -- Image pull policy
+  pullPolicy: IfNotPresent
+
+# -- Image pull secrets for private registries
+imagePullSecrets: []
+
+# -- Number of replicas
+replicaCount: 1
+
+# -- Additional environment variables as key-value pairs
+extraEnv: {}
+# -- Name of an existing secret to use as additional environment variables
+extraEnvSecret: ""
+
+# -- Container resource requests and limits
+resources: {}
+
+# -- Container security context
+securityContext:
+  runAsNonRoot: true
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+# -- Pod security context
+podSecurityContext: {}
+
+# -- Node selector for pod assignment
+nodeSelector: {}
+# -- Tolerations for pod assignment
+tolerations: []
+# -- Affinity rules for pod assignment
+affinity: {}
+# -- Topology spread constraints for pod assignment
+topologySpreadConstraints: []
+# -- Priority class name
+priorityClassName: ""
+
+# -- Additional pod annotations
+podAnnotations: {}
+# -- Additional pod labels
+podLabels: {}
+
+# -- Deployment update strategy
+updateStrategy:
+  type: RollingUpdate
+
+# -- Termination grace period in seconds
+terminationGracePeriodSeconds: 30
+
+# -- Service account configuration
+serviceAccount:
+  # -- Create a service account
+  create: false
+  # -- Service account name (generated if empty and create is true)
+  name: ""
+  # -- Service account annotations
+  annotations: {}
+
+# -- Pod disruption budget configuration
+podDisruptionBudget:
+  # -- Enable PDB
+  enabled: false
+  # -- Minimum available pods
+  minAvailable: 1
+  # -- Maximum unavailable pods (mutually exclusive with minAvailable)
+  maxUnavailable: ""
+
+# -- Liveness probe configuration
+livenessProbe: {}
+# -- Readiness probe configuration
+readinessProbe: {}
+# -- Startup probe configuration
+startupProbe: {}
+
+# -- Additional sidecar containers
+extraContainers: []
+
+# -- Additional volumes
+extraVolumes: []
+# -- Additional volume mounts
+extraVolumeMounts: []
+# -- Additional init containers
+extraInitContainers: []
+
+# -- Service configuration
+service:
+  # -- Service type
+  type: ClusterIP
+  # -- Service port
+  port: 8081
+  # -- Service annotations
+  annotations: {}
+  # -- Service labels
+  labels: {}
