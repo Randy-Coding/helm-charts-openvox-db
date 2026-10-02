@@ -1,0 +1,22 @@
+{{- if and .Values.postgresql.internal.enabled .Values.postgresql.internal.persistence.enabled (not .Values.postgresql.internal.persistence.existingClaim) }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "openvoxdb.postgresqlFullname" . }}
+  labels:
+    {{- include "openvoxdb.labels" . | nindent 4 }}
+    app.kubernetes.io/component: postgresql
+  {{- with .Values.postgresql.internal.persistence.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  accessModes:
+    {{- toYaml .Values.postgresql.internal.persistence.accessModes | nindent 4 }}
+  {{- with .Values.postgresql.internal.persistence.storageClass }}
+  storageClassName: {{ if eq . "-" }}""{{ else }}{{ . | quote }}{{ end }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.postgresql.internal.persistence.size | quote }}
+{{- end }}

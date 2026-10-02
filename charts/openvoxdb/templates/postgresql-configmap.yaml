@@ -1,0 +1,13 @@
+{{- if .Values.postgresql.internal.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "openvoxdb.postgresqlFullname" . }}-init
+  labels:
+    {{- include "openvoxdb.labels" . | nindent 4 }}
+    app.kubernetes.io/component: postgresql
+data:
+  10-openvoxdb-extensions.sql: |
+    CREATE EXTENSION IF NOT EXISTS pg_trgm;
+    CREATE EXTENSION IF NOT EXISTS pgcrypto;
+{{- end }}

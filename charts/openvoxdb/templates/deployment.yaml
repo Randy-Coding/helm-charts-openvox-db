@@ -49,23 +49,18 @@ spec:
             - name: https
               containerPort: 8081
           env:
-            {{- $env := dict "OPENVOXDB_POSTGRES_HOSTNAME" .Values.postgresql.hostname "OPENVOXSERVER_HOSTNAME" .Values.puppetServer.hostname "OPENVOXSERVER_PORT" (.Values.puppetServer.port | toString) "DNS_ALT_NAMES" .Values.alternateServerNames "PUPPETDB_JAVA_ARGS" .Values.javaArgs }}
-            {{- if not .Values.postgresql.existingSecret }}
-            {{- $_ := set $env "OPENVOXDB_POSTGRES_USER" .Values.postgresql.username }}
-            {{- end }}
+            {{- $env := dict "OPENVOXDB_POSTGRES_HOSTNAME" (include "openvoxdb.postgresqlHostname" .) "OPENVOXDB_POSTGRES_PORT" (.Values.postgresql.shared.port | toString) "OPENVOXDB_POSTGRES_DATABASE" .Values.postgresql.shared.database "OPENVOXSERVER_HOSTNAME" .Values.puppetServer.hostname "OPENVOXSERVER_PORT" (.Values.puppetServer.port | toString) "DNS_ALT_NAMES" .Values.alternateServerNames "PUPPETDB_JAVA_ARGS" .Values.javaArgs }}
             {{- range $key, $value := mergeOverwrite $env .Values.extraEnv }}
             - name: {{ $key }}
               value: {{ $value | quote }}
             {{- end }}
-            {{- if .Values.postgresql.existingSecret }}
-            {{- range $key, $secretKey := dict "OPENVOXDB_POSTGRES_USER" .Values.postgresql.usernameKey "OPENVOXDB_POSTGRES_PASSWORD" .Values.postgresql.passwordKey }}
+            {{- range $key, $secretKey := dict "OPENVOXDB_POSTGRES_USER" .Values.postgresql.shared.usernameKey "OPENVOXDB_POSTGRES_PASSWORD" .Values.postgresql.shared.passwordKey }}
             {{- if not (hasKey $.Values.extraEnv $key) }}
             - name: {{ $key }}
               valueFrom:
                 secretKeyRef:
-                  name: {{ $.Values.postgresql.existingSecret | quote }}
+                  name: {{ include "openvoxdb.postgresqlSecretName" $ | quote }}
                   key: {{ $secretKey | quote }}
-            {{- end }}
             {{- end }}
             {{- end }}
           {{- if .Values.extraEnvSecret }}

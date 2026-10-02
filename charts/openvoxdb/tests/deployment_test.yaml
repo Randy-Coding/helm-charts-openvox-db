@@ -17,9 +17,10 @@ tests:
           path: spec.template.spec.initContainers
   - it: references existing credentials and data without creating dependency workloads
     set:
-      postgresql.existingSecret: db-credentials
+      postgresql.internal.enabled: false
+      postgresql.external.hostname: external-db
+      postgresql.shared.existingSecret: db-credentials
       persistence.existingClaim: db-data
-      extraEnv.OPENVOXDB_POSTGRES_HOSTNAME: external-db
     asserts:
       - contains:
           path: spec.template.spec.containers[0].env
