@@ -1,0 +1,46 @@
+suite: standalone deployment
+templates:
+  - templates/deployment.yaml
+tests:
+  - it: uses the selected image and secure defaults
+    asserts:
+      - equal:
+          path: spec.strategy.type
+          value: Recreate
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/openvoxproject/openvoxdb:8.15.0-main
+      - equal:
+          path: spec.template.spec.containers[0].securityContext.runAsNonRoot
+          value: true
+      - notExists:
+          path: spec.template.spec.initContainers
+  - it: references existing credentials and data without creating dependency workloads
+    set:
+      postgresql.existingSecret: db-credentials
+      persistence.existingClaim: db-data
+      extraEnv.OPENVOXDB_POSTGRES_HOSTNAME: external-db
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OPENVOXDB_POSTGRES_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: db-credentials
+                key: password
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OPENVOXDB_POSTGRES_HOSTNAME
+            value: external-db
+      - equal:
+          path: spec.template.spec.volumes[0].persistentVolumeClaim.claimName
+          value: db-data
+  - it: uses temporary storage when persistence is disabled
+    set:
+      persistence.enabled: false
+    asserts:
+      - equal:
+          path: spec.template.spec.volumes[0].emptyDir
+          value: {}

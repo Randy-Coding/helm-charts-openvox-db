@@ -1,0 +1,15 @@
+{{- if .Values.customConfig }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "openvoxdb.fullname" . }}-config
+  labels:
+    {{- include "openvoxdb.labels" . | nindent 4 }}
+data:
+  {{- range $filename, $content := .Values.customConfig }}
+  {{- if or (contains "/" $filename) (not (hasSuffix ".conf" $filename)) }}
+  {{- fail "customConfig keys must be conf.d filenames ending in .conf without slashes" }}
+  {{- end }}
+  {{ $filename | quote }}: {{ $content | quote }}
+  {{- end }}
+{{- end }}

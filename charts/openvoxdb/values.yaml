@@ -1,32 +1,19 @@
-# -- Override the chart name
+# -- Override generated resource names
 nameOverride: ""
-# -- Override the fully qualified app name
 fullnameOverride: ""
 
-# -- Container image repository
+# -- OpenVoxDB container image
 image:
-  # -- Image repository
-  repository: ""
-  # -- Image tag
-  tag: ""
-  # -- Image pull policy
+  repository: ghcr.io/openvoxproject/openvoxdb
+  tag: 8.15.0-main
   pullPolicy: IfNotPresent
-
-# -- Image pull secrets for private registries
 imagePullSecrets: []
 
-# -- Number of replicas
+# -- Pod deployment, scheduling, security, and runtime configuration
 replicaCount: 1
-
-# -- Additional environment variables as key-value pairs
 extraEnv: {}
-# -- Name of an existing secret to use as additional environment variables
 extraEnvSecret: ""
-
-# -- Container resource requests and limits
 resources: {}
-
-# -- Container security context
 securityContext:
   runAsNonRoot: true
   allowPrivilegeEscalation: false
@@ -34,75 +21,111 @@ securityContext:
   capabilities:
     drop:
       - ALL
-
-# -- Pod security context
 podSecurityContext: {}
-
-# -- Node selector for pod assignment
 nodeSelector: {}
-# -- Tolerations for pod assignment
 tolerations: []
-# -- Affinity rules for pod assignment
 affinity: {}
-# -- Topology spread constraints for pod assignment
 topologySpreadConstraints: []
-# -- Priority class name
 priorityClassName: ""
-
-# -- Additional pod annotations
 podAnnotations: {}
-# -- Additional pod labels
 podLabels: {}
-
-# -- Deployment update strategy
 updateStrategy:
-  type: RollingUpdate
-
-# -- Termination grace period in seconds
+  type: Recreate
 terminationGracePeriodSeconds: 30
 
-# -- Service account configuration
+# -- Create or reuse a Kubernetes service account
 serviceAccount:
-  # -- Create a service account
   create: false
-  # -- Service account name (generated if empty and create is true)
+  # Generated from the release name when create is true and name is empty.
   name: ""
-  # -- Service account annotations
   annotations: {}
 
-# -- Pod disruption budget configuration
+# -- Limit voluntary disruptions to available replicas
 podDisruptionBudget:
-  # -- Enable PDB
   enabled: false
-  # -- Minimum available pods
   minAvailable: 1
-  # -- Maximum unavailable pods (mutually exclusive with minAvailable)
+  # Mutually exclusive with minAvailable.
   maxUnavailable: ""
 
-# -- Liveness probe configuration
+# -- Override container health checks
 livenessProbe: {}
-# -- Readiness probe configuration
 readinessProbe: {}
-# -- Startup probe configuration
 startupProbe: {}
 
-# -- Additional sidecar containers
+# -- Inject additional containers, init containers, volumes, and mounts
 extraContainers: []
-
-# -- Additional volumes
 extraVolumes: []
-# -- Additional volume mounts
 extraVolumeMounts: []
-# -- Additional init containers
 extraInitContainers: []
 
-# -- Service configuration
+# -- Expose the OpenVoxDB HTTP and HTTPS APIs
 service:
-  # -- Service type
   type: ClusterIP
-  # -- Service port
   port: 8081
-  # -- Service annotations
+  httpPort: 8080
   annotations: {}
-  # -- Service labels
   labels: {}
+
+# -- External PostgreSQL connection (no database subchart is installed)
+postgresql:
+  hostname: ""
+  # Used when existingSecret is empty.
+  username: puppetdb
+  existingSecret: ""
+  usernameKey: username
+  passwordKey: password
+
+# -- External Puppet Server used by the image for certificate enrollment
+puppetServer:
+  hostname: ""
+  port: 8140
+
+# -- JVM arguments (extraEnv.PUPPETDB_JAVA_ARGS takes precedence)
+javaArgs: ""
+# -- Additional certificate DNS names, comma separated
+alternateServerNames: ""
+# -- Custom conf.d files keyed by filename, mounted individually
+customConfig: {}
+
+# -- Persist OpenVoxDB data or reuse an existing claim
+persistence:
+  enabled: true
+  # Suppresses PVC creation when set.
+  existingClaim: ""
+  accessModes: [ReadWriteOnce]
+  # -- Storage class, empty uses cluster default, '-' disables dynamic provisioning
+  storageClass: ""
+  annotations: {}
+  size: 10Gi
+
+# -- Network isolation. Enabled defaults deny traffic except explicitly supplied rules.
+networkPolicy:
+  enabled: false
+  policyTypes: [Ingress, Egress]
+  additionalIngressRules: []
+  additionalEgressRules: []
+
+# -- Run a Prometheus exporter sidecar and optionally create a ServiceMonitor
+metrics:
+  enabled: false
+  image:
+    repository: camptocamp/prometheus-puppetdb-exporter
+    tag: 1.1.0
+    pullPolicy: IfNotPresent
+  port: 9635
+  interval: 30s
+  resources: {}
+  extraEnv: {}
+  extraEnvSecret: ""
+  # -- Exporter target URL. HTTPS credentials can be mounted using extraVolumes.
+  url: http://localhost:8080/pdb/query
+  # -- Prometheus Operator integration, requires the ServiceMonitor CRD
+  serviceMonitor:
+    enabled: false
+    namespace: ""
+    additionalLabels: {}
+    interval: 30s
+    scrapeTimeout: ""
+    honorLabels: true
+    relabelings: []
+    metricRelabelings: []

@@ -1,7 +1,8 @@
 apiVersion: v2
-name: openvox-db
+name: openvoxdb
 version: 0.1.0
-description: OpenVox DB (PuppetDB) chart scaffold
+appVersion: "8.15.0-main"
+description: Standalone OpenVox DB (PuppetDB)
 type: application
 keywords:
   - openvox

@@ -1,0 +1,17 @@
+suite: data claim
+templates:
+  - templates/pvc.yaml
+tests:
+  - it: skips creation for an existing claim
+    set:
+      persistence.existingClaim: existing
+    asserts:
+      - hasDocuments:
+          count: 0
+  - it: disables dynamic provisioning explicitly
+    set:
+      persistence.storageClass: '-'
+    asserts:
+      - equal:
+          path: spec.storageClassName
+          value: ''
