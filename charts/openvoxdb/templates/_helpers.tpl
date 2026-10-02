@@ -6,6 +6,39 @@ Expand the name of the chart.
 {{- end }}
 
 {{/*
+PostgreSQL resource name.
+*/}}
+{{- define "openvoxdb.postgresqlFullname" -}}
+{{- printf "%s-postgresql" (include "openvoxdb.fullname" .) | trunc 63 | trimSuffix "-" }}
+{{- end }}
+
+{{/*
+PostgreSQL hostname used by OpenVoxDB.
+*/}}
+{{- define "openvoxdb.postgresqlHostname" -}}
+{{- if .Values.postgresql.internal.enabled -}}
+{{- include "openvoxdb.postgresqlFullname" . -}}
+{{- else -}}
+{{- required "postgresql.external.hostname is required when postgresql.internal.enabled is false" .Values.postgresql.external.hostname -}}
+{{- end -}}
+{{- end }}
+
+{{/*
+PostgreSQL credential Secret name.
+*/}}
+{{- define "openvoxdb.postgresqlSecretName" -}}
+{{- default (include "openvoxdb.postgresqlFullname" .) .Values.postgresql.shared.existingSecret -}}
+{{- end }}
+
+{{/*
+PostgreSQL selector labels.
+*/}}
+{{- define "openvoxdb.postgresqlSelectorLabels" -}}
+{{ include "openvoxdb.selectorLabels" . }}
+app.kubernetes.io/component: postgresql
+{{- end }}
+
+{{/*
 Create a default fully qualified app name.
 */}}
 {{- define "openvoxdb.fullname" -}}

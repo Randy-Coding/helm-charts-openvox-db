@@ -66,14 +66,59 @@ service:
   annotations: {}
   labels: {}
 
-# -- External PostgreSQL connection (no database subchart is installed)
+# -- Run bundled PostgreSQL or connect to an external PostgreSQL service
 postgresql:
-  hostname: ""
-  # Used when existingSecret is empty.
-  username: puppetdb
-  existingSecret: ""
-  usernameKey: username
-  passwordKey: password
+  # -- Settings used by internal and external PostgreSQL
+  shared:
+    port: 5432
+    database: puppetdb
+    username: puppetdb
+    existingSecret: ""
+    usernameKey: username
+    passwordKey: password
+
+  # -- PostgreSQL instance managed by this chart
+  internal:
+    enabled: true
+    # Generated when password and shared.existingSecret are empty.
+    password: ""
+    image:
+      repository: docker.io/library/postgres
+      tag: 17.11-bookworm
+      pullPolicy: IfNotPresent
+    resources: {}
+    securityContext:
+      runAsUser: 999
+      runAsGroup: 999
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      capabilities:
+        drop:
+          - ALL
+    podSecurityContext:
+      fsGroup: 999
+      fsGroupChangePolicy: OnRootMismatch
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+    topologySpreadConstraints: []
+    priorityClassName: ""
+    podAnnotations: {}
+    podLabels: {}
+    persistence:
+      enabled: true
+      existingClaim: ""
+      accessModes: [ReadWriteOnce]
+      # Empty uses the cluster default; '-' disables dynamic provisioning.
+      storageClass: ""
+      annotations: {}
+      size: 10Gi
+
+  # -- Existing PostgreSQL or CloudNativePG connection
+  external:
+    # Required when internal.enabled is false.
+    hostname: ""
 
 # -- External Puppet Server used by the image for certificate enrollment
 puppetServer:

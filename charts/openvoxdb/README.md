@@ -4,14 +4,22 @@ Standalone OpenVox DB (PuppetDB). Chart version 0.1.0, application version 8.15.
 
 ## Configuration
 
-This standalone chart deploys OpenVoxDB with external PostgreSQL and Puppet Server
-connections. It installs no PostgreSQL, certificate jobs, Puppetboard, or OpenVox View.
+This standalone chart deploys OpenVoxDB with bundled or external PostgreSQL and an
+external Puppet Server connection. It installs no certificate jobs, Puppetboard,
+or OpenVox View.
 The image and interface defaults were adapted from `.resources/openvox-helm-chart`
 at commit `ad67791`.
 
-Set `postgresql.hostname`, `postgresql.existingSecret`, and `puppetServer.hostname`.
-The credential secret defaults to keys `username` and `password`. The existing
-secret is referenced directly and is never copied into a chart-managed Secret.
+Bundled PostgreSQL uses the official PostgreSQL 17.11 image, enables `pg_trgm` and
+`pgcrypto`, and generates a credential Secret when no password or existing Secret
+is supplied. Set `postgresql.internal.enabled=false`,
+`postgresql.external.hostname`, and `postgresql.shared.existingSecret` to use an
+external service such as CloudNativePG.
+The credential secret defaults to keys `username` and `password` and is referenced
+directly.
+Bundled PostgreSQL data persists in a 10Gi claim by default. The PostgreSQL image
+runs as UID and GID 999 with a read-only root filesystem and writable mounts for
+its data, runtime socket, and temporary files.
 `extraEnv` overrides generated environment variables. `extraEnvSecret` supports
 additional secret environment variables. Explicit environment values take
 precedence over values imported from `extraEnvSecret`.
@@ -41,11 +49,10 @@ requires the Prometheus Operator ServiceMonitor CRD and `metrics.enabled: true`.
 
 The chart retains `runAsNonRoot: true`, dropped capabilities, no privilege
 escalation, and a read-only root filesystem. It supplies writable data and `/tmp`
-mounts and includes no privileged directory-setup init container. Startup of
-`ghcr.io/openvoxproject/openvoxdb:8.15.0-main` under these defaults has not been
-validated. The reference chart documents a root requirement. Container image
-user, entrypoint writes, certificate enrollment, and volume permissions require
-runtime validation. A successful Helm render does not establish runtime compatibility.
+mounts and includes no privileged directory-setup init container. The OpenVoxDB
+image reaches PostgreSQL successfully under these restrictions. Certificate
+enrollment and complete service startup still require runtime validation against
+an OpenVox Server.
 
 ## Values
 
@@ -92,11 +99,25 @@ runtime validation. A successful Helm render does not establish runtime compatib
 | `service.httpPort` | `8080` | HTTP service port |
 | `service.annotations` | `{}` | Service annotations |
 | `service.labels` | `{}` | Service labels |
-| `postgresql.hostname` | `""` | PostgreSQL hostname |
-| `postgresql.username` | `puppetdb` | PostgreSQL username, used when existingSecret is empty |
-| `postgresql.existingSecret` | `""` | Existing secret containing PostgreSQL credentials |
-| `postgresql.usernameKey` | `username` | Username key in existingSecret |
-| `postgresql.passwordKey` | `password` | Password key in existingSecret |
+| `postgresql.shared.port` | `5432` | PostgreSQL port |
+| `postgresql.shared.database` | `puppetdb` | PostgreSQL database name |
+| `postgresql.shared.username` | `puppetdb` | PostgreSQL username |
+| `postgresql.shared.existingSecret` | `""` | Existing secret containing PostgreSQL credentials |
+| `postgresql.shared.usernameKey` | `username` | Username key in the credential Secret |
+| `postgresql.shared.passwordKey` | `password` | Password key in the credential Secret |
+| `postgresql.internal.enabled` | `true` | Deploy bundled PostgreSQL |
+| `postgresql.internal.password` | `""` | Generated when bundled and empty |
+| `postgresql.internal.image.repository` | `docker.io/library/postgres` | PostgreSQL image repository |
+| `postgresql.internal.image.tag` | `17.11-bookworm` | PostgreSQL image tag |
+| `postgresql.internal.image.pullPolicy` | `IfNotPresent` | PostgreSQL image pull policy |
+| `postgresql.internal.resources` | `{}` | PostgreSQL resource requests and limits |
+| `postgresql.internal.persistence.enabled` | `true` | Persist bundled PostgreSQL data |
+| `postgresql.internal.persistence.existingClaim` | `""` | Existing PostgreSQL PVC name |
+| `postgresql.internal.persistence.accessModes` | `[ReadWriteOnce]` | PostgreSQL PVC access modes |
+| `postgresql.internal.persistence.storageClass` | `""` | PostgreSQL storage class |
+| `postgresql.internal.persistence.annotations` | `{}` | PostgreSQL PVC annotations |
+| `postgresql.internal.persistence.size` | `10Gi` | PostgreSQL storage size |
+| `postgresql.external.hostname` | `""` | External PostgreSQL or CloudNativePG hostname |
 | `puppetServer.hostname` | `""` | Puppet Server hostname |
 | `puppetServer.port` | `8140` | Puppet Server port |
 | `javaArgs` | `""` | JVM arguments (extraEnv.PUPPETDB_JAVA_ARGS takes precedence) |
