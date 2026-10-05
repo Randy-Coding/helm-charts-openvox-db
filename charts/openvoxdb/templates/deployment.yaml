@@ -49,12 +49,19 @@ spec:
             - name: https
               containerPort: 8081
           env:
-            {{- $env := dict "OPENVOXDB_POSTGRES_HOSTNAME" (include "openvoxdb.postgresqlHostname" .) "OPENVOXDB_POSTGRES_PORT" (.Values.postgresql.shared.port | toString) "OPENVOXDB_POSTGRES_DATABASE" .Values.postgresql.shared.database "OPENVOXSERVER_HOSTNAME" .Values.puppetServer.hostname "OPENVOXSERVER_PORT" (.Values.puppetServer.port | toString) "DNS_ALT_NAMES" .Values.alternateServerNames "PUPPETDB_JAVA_ARGS" .Values.javaArgs }}
+            {{- $env := dict "OPENVOXDB_POSTGRES_HOSTNAME" (include "openvoxdb.postgresqlHostname" .) "OPENVOXDB_POSTGRES_PORT" (include "openvoxdb.postgresqlPort" .) "OPENVOXDB_POSTGRES_DATABASE" (include "openvoxdb.postgresqlDatabase" .) "OPENVOXSERVER_HOSTNAME" .Values.puppetServer.hostname "OPENVOXSERVER_PORT" (.Values.puppetServer.port | toString) "DNS_ALT_NAMES" .Values.alternateServerNames "PUPPETDB_JAVA_ARGS" .Values.javaArgs }}
+            {{- if .Values.postgresql.enabled }}
+            {{- $_ := set $env "OPENVOXDB_POSTGRES_USER" .Values.postgresql.auth.username }}
+            {{- end }}
             {{- range $key, $value := mergeOverwrite $env .Values.extraEnv }}
             - name: {{ $key }}
               value: {{ $value | quote }}
             {{- end }}
-            {{- range $key, $secretKey := dict "OPENVOXDB_POSTGRES_USER" .Values.postgresql.shared.usernameKey "OPENVOXDB_POSTGRES_PASSWORD" .Values.postgresql.shared.passwordKey }}
+            {{- $secretEnv := dict "OPENVOXDB_POSTGRES_PASSWORD" (include "openvoxdb.postgresqlPasswordKey" .) }}
+            {{- if not .Values.postgresql.enabled }}
+            {{- $_ := set $secretEnv "OPENVOXDB_POSTGRES_USER" .Values.postgresql.shared.usernameKey }}
+            {{- end }}
+            {{- range $key, $secretKey := $secretEnv }}
             {{- if not (hasKey $.Values.extraEnv $key) }}
             - name: {{ $key }}
               valueFrom:
