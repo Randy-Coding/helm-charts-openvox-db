@@ -18,8 +18,39 @@ tests:
           template: templates/deployment.yaml
           path: spec.template.spec.containers[0].securityContext.runAsNonRoot
           value: true
-      - notExists:
-          path: spec.template.spec.initContainers
+      - equal:
+          template: templates/deployment.yaml
+          path: spec.template.spec.initContainers[0].command
+          value: [sh, -ec, mkdir -p /opt/puppetlabs/server/data/puppetdb/logs]
+      - equal:
+          path: spec.template.spec.initContainers[0].image
+          value: ghcr.io/openvoxproject/openvoxdb:8.15.0-main
+      - equal:
+          path: spec.template.spec.initContainers[0].securityContext.runAsUser
+          value: 64604
+      - equal:
+          path: spec.template.spec.initContainers[0].securityContext.runAsGroup
+          value: 0
+      - equal:
+          path: spec.template.spec.securityContext.fsGroup
+          value: 0
+      - equal:
+          path: spec.template.spec.initContainers[0].volumeMounts[0].name
+          value: data
+  - it: preserves additional init containers after data preparation
+    template: templates/deployment.yaml
+    set:
+      extraInitContainers:
+        - name: custom-init
+          image: busybox:1.37
+          command: [sh, -c, "true"]
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].name
+          value: prepare-data
+      - equal:
+          path: spec.template.spec.initContainers[1].name
+          value: custom-init
   - it: references existing credentials and data without creating dependency workloads
     template: templates/deployment.yaml
     set:

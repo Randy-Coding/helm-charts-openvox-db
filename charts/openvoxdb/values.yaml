@@ -21,7 +21,10 @@ securityContext:
   capabilities:
     drop:
       - ALL
-podSecurityContext: {}
+# The OpenVoxDB image uses group 0 for writable files, including under arbitrary UIDs.
+podSecurityContext:
+  fsGroup: 0
+  fsGroupChangePolicy: OnRootMismatch
 nodeSelector: {}
 tolerations: []
 affinity: {}
