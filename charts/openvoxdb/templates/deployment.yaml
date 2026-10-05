@@ -17,6 +17,9 @@ spec:
     metadata:
       annotations:
         checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        {{- if include "openvoxdb.readDatabaseEnabled" . }}
+        checksum/read-database: {{ include (print $.Template.BasePath "/read-database-configmap.yaml") . | sha256sum }}
+        {{- end }}
         {{- with .Values.podAnnotations }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
@@ -51,6 +54,9 @@ spec:
           env:
             {{- $env := dict "OPENVOXDB_POSTGRES_HOSTNAME" (include "openvoxdb.postgresqlHostname" .) "OPENVOXDB_POSTGRES_PORT" (include "openvoxdb.postgresqlPort" .) "OPENVOXDB_POSTGRES_DATABASE" (include "openvoxdb.postgresqlDatabase" .) "OPENVOXSERVER_HOSTNAME" .Values.puppetServer.hostname "OPENVOXSERVER_PORT" (.Values.puppetServer.port | toString) "DNS_ALT_NAMES" .Values.alternateServerNames "PUPPETDB_JAVA_ARGS" .Values.javaArgs }}
             {{- $_ := set $env "USE_OPENVOXSERVER" (.Values.puppetServer.enabled | toString) }}
+            {{- if include "openvoxdb.readDatabaseEnabled" . }}
+            {{- $_ := set $env "OPENVOXDB_POSTGRES_READ_USER" .Values.readDatabase.username }}
+            {{- end }}
             {{- if .Values.postgresql.enabled }}
             {{- $_ := set $env "OPENVOXDB_POSTGRES_USER" .Values.postgresql.auth.username }}
             {{- end }}
@@ -70,6 +76,13 @@ spec:
                   name: {{ include "openvoxdb.postgresqlSecretName" $ | quote }}
                   key: {{ $secretKey | quote }}
             {{- end }}
+            {{- end }}
+            {{- if and (include "openvoxdb.readDatabaseEnabled" .) (not (hasKey .Values.extraEnv "OPENVOXDB_POSTGRES_READ_PASSWORD")) }}
+            - name: OPENVOXDB_POSTGRES_READ_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "openvoxdb.readDatabaseSecretName" . | quote }}
+                  key: {{ .Values.readDatabase.passwordKey | quote }}
             {{- end }}
           {{- if .Values.extraEnvSecret }}
           envFrom:
@@ -101,6 +114,12 @@ spec:
               mountPath: /opt/puppetlabs/server/data/puppetdb
             - name: tmp
               mountPath: /tmp
+            {{- if include "openvoxdb.readDatabaseEnabled" . }}
+            - name: config
+              mountPath: /etc/puppetlabs/puppetdb/conf.d/read-database.conf
+              subPath: read-database.conf
+              readOnly: true
+            {{- end }}
             {{- range $filename, $_ := .Values.customConfig }}
             - name: config
               mountPath: {{ printf "/etc/puppetlabs/puppetdb/conf.d/%s" $filename | quote }}
@@ -148,6 +167,61 @@ spec:
         {{- toYaml . | nindent 8 }}
         {{- end }}
       initContainers:
+        {{- if include "openvoxdb.readDatabaseEnabled" . }}
+        - name: prepare-read-database
+          image: "{{ .Values.postgresql.image.repository }}:{{ .Values.postgresql.image.tag }}"
+          imagePullPolicy: {{ .Values.postgresql.image.pullPolicy }}
+          command:
+            - sh
+            - -ec
+            - |
+              export PGCONNECT_TIMEOUT=5
+              for attempt in $(seq 1 60); do
+                if psql -Atc 'SELECT 1' >/dev/null 2>&1; then
+                  exec psql --set ON_ERROR_STOP=1 --set database="$PGDATABASE" \
+                    --set write_user="$WRITE_USER" --set read_user="$READ_USER" \
+                    --set read_password="$READ_PASSWORD" --file /scripts/provision.sql
+                fi
+                sleep 2
+              done
+              echo "PostgreSQL was not ready for read-only account provisioning" >&2
+              exit 1
+          env:
+            - name: PGHOST
+              value: {{ include "openvoxdb.postgresqlHostname" . | quote }}
+            - name: PGPORT
+              value: {{ include "openvoxdb.postgresqlPort" . | quote }}
+            - name: PGDATABASE
+              value: {{ include "openvoxdb.postgresqlDatabase" . | quote }}
+            - name: PGUSER
+              value: postgres
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "openvoxdb.postgresqlSecretName" . | quote }}
+                  key: {{ .Values.postgresql.auth.existingSecretPostgresPasswordKey | quote }}
+            - name: WRITE_USER
+              value: {{ .Values.postgresql.auth.username | quote }}
+            - name: READ_USER
+              value: {{ .Values.readDatabase.username | quote }}
+            - name: READ_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "openvoxdb.readDatabaseSecretName" . | quote }}
+                  key: {{ .Values.readDatabase.passwordKey | quote }}
+          securityContext:
+            runAsUser: 999
+            runAsGroup: 999
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            - name: read-database-scripts
+              mountPath: /scripts
+              readOnly: true
+        {{- end }}
         - name: prepare-data
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
@@ -179,10 +253,15 @@ spec:
           {{- end }}
         - name: tmp
           emptyDir: {}
-        {{- if .Values.customConfig }}
+        {{- if or .Values.customConfig (include "openvoxdb.readDatabaseEnabled" .) }}
         - name: config
           configMap:
             name: {{ include "openvoxdb.fullname" . }}-config
+        {{- end }}
+        {{- if include "openvoxdb.readDatabaseEnabled" . }}
+        - name: read-database-scripts
+          configMap:
+            name: {{ include "openvoxdb.fullname" . }}-read-database
         {{- end }}
         {{- with .Values.extraVolumes }}
         {{- toYaml . | nindent 8 }}

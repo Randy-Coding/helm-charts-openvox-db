@@ -57,6 +57,20 @@ volume before Java starts. It uses the OpenVoxDB image, UID 64604, and GID 0.
 The pod defaults to `fsGroup: 0` so the mounted volume is writable by that group.
 User-supplied `extraInitContainers` run after data preparation.
 
+Bundled PostgreSQL uses a separate `puppetdb_read` account for the query pool.
+Configure it through `readDatabase.*`; the password is stored in a separate
+Secret and retained across Helm upgrades. An existing Secret is supported through
+`readDatabase.existingSecret` and `readDatabase.passwordKey`.
+A non-root `prepare-read-database` init container connects as the PostgreSQL
+administrator to create or update this account before OpenVoxDB starts. It grants
+SELECT on existing tables and default read permissions on future migration objects,
+and grants the read role to the writer for partition cleanup. This also supports
+databases that have already completed migrations, without resetting their data.
+The administrator password is available only to this provisioning container.
+Generated `read-database.conf` references environment variables for credentials.
+Set `readDatabase.enabled=false` to supply your own read-pool configuration.
+Automatic provisioning applies only to bundled PostgreSQL. External databases
+can use `customConfig` to configure an independently managed read-only account.
 Custom `.conf` files are mounted individually into `/etc/puppetlabs/puppetdb/conf.d`
 and changes trigger a rollout. SubPath-mounted files update when pods are replaced.
 
@@ -180,6 +194,11 @@ tests; the replacement has not been deployed to Kubernetes.
 | `postgresql.shared.passwordKey` | `password` | Password key in the credential Secret |
 | `postgresql.external.hostname` | `""` | External PostgreSQL or CloudNativePG hostname |
 | `puppetServer.enabled` | `true` | Wait for an external Puppet Server and enroll TLS certificates |
+| `readDatabase.enabled` | `true` | Provision a separate query account for bundled PostgreSQL |
+| `readDatabase.username` | `puppetdb_read` | Read-only database account |
+| `readDatabase.password` | `""` | Read-only password, generated and retained when empty |
+| `readDatabase.existingSecret` | `""` | Existing read-only password Secret |
+| `readDatabase.passwordKey` | `password` | Read-only password key |
 | `puppetServer.hostname` | `""` | Puppet Server hostname |
 | `puppetServer.port` | `8140` | Puppet Server port |
 | `javaArgs` | `""` | JVM arguments (extraEnv.PUPPETDB_JAVA_ARGS takes precedence) |
