@@ -1,6 +1,6 @@
 # openvoxdb
 
-Standalone OpenVox DB (PuppetDB).
+Standalone OpenVox DB (PuppetDB)
 
 ## Usage
 
