@@ -1,6 +1,6 @@
 # openvoxdb
 
-Standalone OpenVox DB (PuppetDB). Chart version 0.1.0, application version 8.15.0-main.
+Standalone OpenVox DB (PuppetDB). Chart version 0.2.0, application version 8.15.0-main.
 
 ## Configuration
 
@@ -10,16 +10,32 @@ or OpenVox View.
 The image and interface defaults were adapted from `.resources/openvox-helm-chart`
 at commit `ad67791`.
 
-Bundled PostgreSQL uses the official PostgreSQL 17.11 image, enables `pg_trgm` and
-`pgcrypto`, and generates a credential Secret when no password or existing Secret
-is supplied. Set `postgresql.internal.enabled=false`,
-`postgresql.external.hostname`, and `postgresql.shared.existingSecret` to use an
-external service such as CloudNativePG.
-The credential secret defaults to keys `username` and `password` and is referenced
-directly.
-Bundled PostgreSQL data persists in a 10Gi claim by default. The PostgreSQL image
-runs as UID and GID 999 with a read-only root filesystem and writable mounts for
-its data, runtime socket, and temporary files.
+Bundled PostgreSQL is provided by the pinned HelmForge PostgreSQL 2.0.5 subchart.
+It uses the official PostgreSQL 17.11 image, initializes `pg_trgm` and `pgcrypto`
+in the configured application database, and persists data in a 10Gi claim.
+Run `helm dependency build charts/openvoxdb` before linting, testing, or installing
+from this source directory. The release workflow includes the dependency in the
+published chart.
+
+Configure the subchart through native `postgresql.*` values, including
+`auth.database`, `auth.username`, `auth.password`, and
+`standalone.persistence`. OpenVoxDB follows the subchart's service name, port,
+database, application username, and password Secret. Replication mode uses the
+writable primary service. Parent name overrides do not rename the subchart;
+use `postgresql.nameOverride` or `postgresql.fullnameOverride`.
+
+HelmForge creates separate administrator and application passwords when empty.
+An existing `postgresql.auth.existingSecret` must contain `postgres-password`
+and `user-password`, or the configured `auth.existingSecret*PasswordKey` keys.
+Replication also requires the replication password key. OpenVoxDB reads the
+application password only. Initialization scripts run only on a fresh data directory.
+The PostgreSQL image runs as UID and GID 999 with a read-only root filesystem
+and writable mounts for data, runtime sockets, and temporary files.
+
+For an external service such as CloudNativePG, set `postgresql.enabled=false`,
+`postgresql.external.hostname`, and `postgresql.shared.existingSecret`.
+The `postgresql.shared.*` values apply only to external connections. External
+credential Secrets retain the `username` and `password` keys by default.
 `extraEnv` overrides generated environment variables. `extraEnvSecret` supports
 additional secret environment variables. Explicit environment values take
 precedence over values imported from `extraEnvSecret`.
@@ -33,6 +49,7 @@ and `extraVolumeMounts`, with matching configuration supplied through `customCon
 Persistence defaults to a 10Gi ReadWriteOnce claim at
 `/opt/puppetlabs/server/data/puppetdb`. `persistence.existingClaim` reuses a claim.
 Disabling persistence uses an emptyDir and loses data on pod replacement.
+
 Custom `.conf` files are mounted individually into `/etc/puppetlabs/puppetdb/conf.d`
 and changes trigger a rollout. SubPath-mounted files update when pods are replaced.
 
@@ -45,14 +62,37 @@ query URL uses local HTTP. HTTPS can be configured through `metrics.url`,
 `metrics.extraEnv`, and certificate volume mounts. `metrics.serviceMonitor.enabled`
 requires the Prometheus Operator ServiceMonitor CRD and `metrics.enabled: true`.
 
+## Migration from 0.1.x
+
+This is a breaking configuration and storage change. Replace
+`postgresql.internal.enabled` with `postgresql.enabled`, move internal image
+and scheduling settings directly under `postgresql`, and move internal resources
+and persistence settings under `postgresql.standalone`. Bundled database and
+username settings now use `postgresql.auth.database` and `auth.username`.
+The former internal password becomes `postgresql.auth.password`; an administrator
+password is configured separately through `auth.postgresPassword`.
+
+Existing installations require a database migration before upgrading. The former
+standalone PVC and Secret are replaced by HelmForge's StatefulSet claim
+(`data-<postgresql-statefulset>-0`) and auth Secret. HelmForge 2.0.5 does not expose
+an `existingClaim` option. A normal Helm upgrade does not move existing data or
+adapt the old credentials. The old database initialized `puppetdb` as the
+bootstrap superuser, while HelmForge expects a `postgres` administrator and a
+separate application account. Preserve the old PVC and credentials and migrate
+the database into the new instance before retiring the old resources.
+
+PostgreSQL remains on version 17.11. Choosing a new chart does not perform a
+PostgreSQL major-version upgrade. Existing external connections retain their
+`shared` and `external` settings and require the new enable flag.
+
 ## Runtime validation
 
 The chart retains `runAsNonRoot: true`, dropped capabilities, no privilege
 escalation, and a read-only root filesystem. It supplies writable data and `/tmp`
-mounts and includes no privileged directory-setup init container. The OpenVoxDB
-image reaches PostgreSQL successfully under these restrictions. Certificate
-enrollment and complete service startup still require runtime validation against
-an OpenVox Server.
+mounts and includes no privileged directory-setup init container. Certificate
+enrollment and complete service startup require runtime validation against an
+OpenVox Server. HelmForge integration is verified by local rendering and unit
+tests; the replacement has not been deployed to Kubernetes.
 
 ## Values
 
@@ -99,24 +139,38 @@ an OpenVox Server.
 | `service.httpPort` | `8080` | HTTP service port |
 | `service.annotations` | `{}` | Service annotations |
 | `service.labels` | `{}` | Service labels |
-| `postgresql.shared.port` | `5432` | PostgreSQL port |
+| `postgresql.enabled` | `true` | Deploy the HelmForge PostgreSQL subchart |
+| `postgresql.architecture` | `standalone` | Standalone or replication architecture |
+| `postgresql.nameOverride` | `""` | Override the subchart name |
+| `postgresql.fullnameOverride` | `""` | Override the subchart resource name |
+| `postgresql.image.repository` | `docker.io/library/postgres` | PostgreSQL image repository |
+| `postgresql.image.tag` | `17.11-bookworm` | PostgreSQL image tag |
+| `postgresql.image.pullPolicy` | `IfNotPresent` | PostgreSQL image pull policy |
+| `postgresql.auth.database` | `puppetdb` | Bundled application database |
+| `postgresql.auth.username` | `puppetdb` | Bundled application username |
+| `postgresql.auth.postgresPassword` | `""` | Administrator password, generated when empty |
+| `postgresql.auth.password` | `""` | Application password, generated when empty |
+| `postgresql.auth.existingSecret` | `""` | Existing administrator and application password Secret |
+| `postgresql.auth.existingSecretPostgresPasswordKey` | `postgres-password` | Administrator password key |
+| `postgresql.auth.existingSecretUserPasswordKey` | `user-password` | Application password key used by OpenVoxDB |
+| `postgresql.service.port` | `5432` | Bundled PostgreSQL port |
+| `postgresql.standalone.resourcesPreset` | `none` | PostgreSQL resource preset |
+| `postgresql.standalone.resources` | `{}` | Explicit PostgreSQL resources |
+| `postgresql.standalone.persistence.enabled` | `true` | Persist bundled PostgreSQL data |
+| `postgresql.standalone.persistence.accessModes` | `[ReadWriteOnce]` | PostgreSQL PVC access modes |
+| `postgresql.standalone.persistence.storageClass` | `""` | PostgreSQL storage class |
+| `postgresql.standalone.persistence.size` | `10Gi` | PostgreSQL storage size |
+| `postgresql.securityContext` | See values.yaml | Non-root, read-only container configuration |
+| `postgresql.podSecurityContext` | See values.yaml | PostgreSQL filesystem permissions |
+| `postgresql.extraVolumes` | Runtime and temporary emptyDirs | Writable PostgreSQL runtime volumes |
+| `postgresql.extraVolumeMounts` | `/var/run/postgresql`, `/tmp` | Writable runtime mount paths |
+| `postgresql.initdb.scripts` | Extension initialization script | Initialize pg_trgm and pgcrypto in the application database |
+| `postgresql.shared.port` | `5432` | External PostgreSQL port |
 | `postgresql.shared.database` | `puppetdb` | PostgreSQL database name |
 | `postgresql.shared.username` | `puppetdb` | PostgreSQL username |
 | `postgresql.shared.existingSecret` | `""` | Existing secret containing PostgreSQL credentials |
 | `postgresql.shared.usernameKey` | `username` | Username key in the credential Secret |
 | `postgresql.shared.passwordKey` | `password` | Password key in the credential Secret |
-| `postgresql.internal.enabled` | `true` | Deploy bundled PostgreSQL |
-| `postgresql.internal.password` | `""` | Generated when bundled and empty |
-| `postgresql.internal.image.repository` | `docker.io/library/postgres` | PostgreSQL image repository |
-| `postgresql.internal.image.tag` | `17.11-bookworm` | PostgreSQL image tag |
-| `postgresql.internal.image.pullPolicy` | `IfNotPresent` | PostgreSQL image pull policy |
-| `postgresql.internal.resources` | `{}` | PostgreSQL resource requests and limits |
-| `postgresql.internal.persistence.enabled` | `true` | Persist bundled PostgreSQL data |
-| `postgresql.internal.persistence.existingClaim` | `""` | Existing PostgreSQL PVC name |
-| `postgresql.internal.persistence.accessModes` | `[ReadWriteOnce]` | PostgreSQL PVC access modes |
-| `postgresql.internal.persistence.storageClass` | `""` | PostgreSQL storage class |
-| `postgresql.internal.persistence.annotations` | `{}` | PostgreSQL PVC annotations |
-| `postgresql.internal.persistence.size` | `10Gi` | PostgreSQL storage size |
 | `postgresql.external.hostname` | `""` | External PostgreSQL or CloudNativePG hostname |
 | `puppetServer.hostname` | `""` | Puppet Server hostname |
 | `puppetServer.port` | `8140` | Puppet Server port |

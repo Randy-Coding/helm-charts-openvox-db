@@ -6,20 +6,23 @@ Expand the name of the chart.
 {{- end }}
 
 {{/*
-PostgreSQL resource name.
+PostgreSQL writable service name, using the subchart's naming rules.
 */}}
 {{- define "openvoxdb.postgresqlFullname" -}}
-{{- printf "%s-postgresql" (include "openvoxdb.fullname" .) | trunc 63 | trimSuffix "-" }}
+{{- include "postgresql.primaryServiceName" .Subcharts.postgresql -}}
 {{- end }}
 
 {{/*
 PostgreSQL hostname used by OpenVoxDB.
 */}}
 {{- define "openvoxdb.postgresqlHostname" -}}
-{{- if .Values.postgresql.internal.enabled -}}
+{{- if hasKey .Values.postgresql "internal" -}}
+{{- fail "postgresql.internal was removed in chart 0.2.0; migrate to HelmForge postgresql.enabled/auth/standalone values as documented in README.md" -}}
+{{- end -}}
+{{- if .Values.postgresql.enabled -}}
 {{- include "openvoxdb.postgresqlFullname" . -}}
 {{- else -}}
-{{- required "postgresql.external.hostname is required when postgresql.internal.enabled is false" .Values.postgresql.external.hostname -}}
+{{- required "postgresql.external.hostname is required when postgresql.enabled is false" .Values.postgresql.external.hostname -}}
 {{- end -}}
 {{- end }}
 
@@ -27,15 +30,38 @@ PostgreSQL hostname used by OpenVoxDB.
 PostgreSQL credential Secret name.
 */}}
 {{- define "openvoxdb.postgresqlSecretName" -}}
-{{- default (include "openvoxdb.postgresqlFullname" .) .Values.postgresql.shared.existingSecret -}}
+{{- if .Values.postgresql.enabled -}}
+{{- include "postgresql.secretName" .Subcharts.postgresql -}}
+{{- else -}}
+{{- required "postgresql.shared.existingSecret is required when postgresql.enabled is false" .Values.postgresql.shared.existingSecret -}}
+{{- end -}}
 {{- end }}
 
 {{/*
-PostgreSQL selector labels.
+PostgreSQL connection settings for bundled and external deployments.
 */}}
-{{- define "openvoxdb.postgresqlSelectorLabels" -}}
-{{ include "openvoxdb.selectorLabels" . }}
-app.kubernetes.io/component: postgresql
+{{- define "openvoxdb.postgresqlPort" -}}
+{{- if .Values.postgresql.enabled -}}
+{{- .Values.postgresql.service.port -}}
+{{- else -}}
+{{- .Values.postgresql.shared.port -}}
+{{- end -}}
+{{- end }}
+
+{{- define "openvoxdb.postgresqlDatabase" -}}
+{{- if .Values.postgresql.enabled -}}
+{{- .Values.postgresql.auth.database -}}
+{{- else -}}
+{{- .Values.postgresql.shared.database -}}
+{{- end -}}
+{{- end }}
+
+{{- define "openvoxdb.postgresqlPasswordKey" -}}
+{{- if .Values.postgresql.enabled -}}
+{{- .Values.postgresql.auth.existingSecretUserPasswordKey -}}
+{{- else -}}
+{{- .Values.postgresql.shared.passwordKey -}}
+{{- end -}}
 {{- end }}
 
 {{/*

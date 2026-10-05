@@ -41,6 +41,7 @@ All charts follow the conventions in [docs/chart-standards.md](docs/chart-standa
 
 ```bash
 # Lint
+helm dependency build charts/<chart-name>
 helm lint charts/<chart-name>
 
 # Run unit tests

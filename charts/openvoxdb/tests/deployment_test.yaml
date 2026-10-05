@@ -1,28 +1,35 @@
 suite: standalone deployment
 templates:
   - templates/deployment.yaml
+  - templates/configmap.yaml
 tests:
   - it: uses the selected image and secure defaults
+    template: templates/deployment.yaml
     asserts:
       - equal:
+          template: templates/deployment.yaml
           path: spec.strategy.type
           value: Recreate
       - equal:
+          template: templates/deployment.yaml
           path: spec.template.spec.containers[0].image
           value: ghcr.io/openvoxproject/openvoxdb:8.15.0-main
       - equal:
+          template: templates/deployment.yaml
           path: spec.template.spec.containers[0].securityContext.runAsNonRoot
           value: true
       - notExists:
           path: spec.template.spec.initContainers
   - it: references existing credentials and data without creating dependency workloads
+    template: templates/deployment.yaml
     set:
-      postgresql.internal.enabled: false
+      postgresql.enabled: false
       postgresql.external.hostname: external-db
       postgresql.shared.existingSecret: db-credentials
       persistence.existingClaim: db-data
     asserts:
       - contains:
+          template: templates/deployment.yaml
           path: spec.template.spec.containers[0].env
           content:
             name: OPENVOXDB_POSTGRES_PASSWORD
@@ -31,17 +38,21 @@ tests:
                 name: db-credentials
                 key: password
       - contains:
+          template: templates/deployment.yaml
           path: spec.template.spec.containers[0].env
           content:
             name: OPENVOXDB_POSTGRES_HOSTNAME
             value: external-db
       - equal:
+          template: templates/deployment.yaml
           path: spec.template.spec.volumes[0].persistentVolumeClaim.claimName
           value: db-data
   - it: uses temporary storage when persistence is disabled
+    template: templates/deployment.yaml
     set:
       persistence.enabled: false
     asserts:
       - equal:
+          template: templates/deployment.yaml
           path: spec.template.spec.volumes[0].emptyDir
           value: {}
