@@ -42,7 +42,7 @@ PostgreSQL connection settings for bundled and external deployments.
 */}}
 {{- define "openvoxdb.postgresqlPort" -}}
 {{- if .Values.postgresql.enabled -}}
-{{- .Values.postgresql.service.port -}}
+{{- .Subcharts.postgresql.Values.service.port -}}
 {{- else -}}
 {{- .Values.postgresql.shared.port -}}
 {{- end -}}
@@ -58,7 +58,7 @@ PostgreSQL connection settings for bundled and external deployments.
 
 {{- define "openvoxdb.postgresqlPasswordKey" -}}
 {{- if .Values.postgresql.enabled -}}
-{{- .Values.postgresql.auth.existingSecretUserPasswordKey -}}
+{{- .Subcharts.postgresql.Values.auth.existingSecretUserPasswordKey -}}
 {{- else -}}
 {{- .Values.postgresql.shared.passwordKey -}}
 {{- end -}}
