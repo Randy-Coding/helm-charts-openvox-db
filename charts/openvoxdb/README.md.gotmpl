@@ -10,13 +10,12 @@ From the repository root, download the pinned PostgreSQL dependency once:
 helm dependency build charts/openvoxdb
 ```
 
-Standalone HTTP operation:
-
+If you don't have an existing puppet/openvox server ensure to set the following flag to false
 ```sh
 helm install openvoxdb charts/openvoxdb --set puppetServer.enabled=false
 ```
 
-Certificate enrollment through an existing OpenVox Server:
+If you have an existing puppet/openvox then make sure you configure its hostname in an values_override file or as an argument.
 
 ```sh
 helm install openvoxdb charts/openvoxdb \
@@ -33,8 +32,10 @@ Bundled PostgreSQL uses HelmForge 2.0.5 with the official PostgreSQL 17.11 image
 Passwords are generated when empty. A separate query account is provisioned
 before OpenVoxDB starts. Both components use persistent storage by default.
 
-Additional HelmForge options can be set under `postgresql.*`. Omitted settings
-inherit the pinned subchart's defaults, including standalone mode and port 5432.
+Additional HelmForge options can be set under `postgresql.*`.
+
+Optional metrics overrides include `extraEnv`, `extraEnvSecret`, and ServiceMonitor
+`namespace`, `additionalLabels`, `scrapeTimeout`, `relabelings`, and `metricRelabelings`.
 
 | Value | Default | Purpose |
 | --- | --- | --- |
@@ -60,11 +61,9 @@ inherit the pinned subchart's defaults, including standalone mode and port 5432.
 
 See [values.yaml](values.yaml) for chart defaults,
 [HelmForge documentation](https://helmforge.dev/docs/charts/postgresql)
-for inherited PostgreSQL options, and
-[MIGRATION.md](MIGRATION.md) for database configuration and migration details.
+for inherited PostgreSQL options.
 
 ## Validation
 
 Standalone startup and facts submission/query have passed runtime testing.
-Persistence across restarts, upgrades, and certificate enrollment remain unverified.
 See [TESTING.md](TESTING.md) for local tests and the API smoke test.

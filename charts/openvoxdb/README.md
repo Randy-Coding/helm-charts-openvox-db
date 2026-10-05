@@ -34,6 +34,9 @@ before OpenVoxDB starts. Both components use persistent storage by default.
 
 Additional HelmForge options can be set under `postgresql.*`.
 
+Optional metrics overrides include `extraEnv`, `extraEnvSecret`, and ServiceMonitor
+`namespace`, `additionalLabels`, `scrapeTimeout`, `relabelings`, and `metricRelabelings`.
+
 | Value | Default | Purpose |
 | --- | --- | --- |
 | `puppetServer.enabled` | `true` | Enable server enrollment |
@@ -58,8 +61,7 @@ Additional HelmForge options can be set under `postgresql.*`.
 
 See [values.yaml](values.yaml) for chart defaults,
 [HelmForge documentation](https://helmforge.dev/docs/charts/postgresql)
-for inherited PostgreSQL options, and
-[MIGRATION.md](MIGRATION.md) for database configuration and migration details.
+for inherited PostgreSQL options.
 
 ## Validation
 
