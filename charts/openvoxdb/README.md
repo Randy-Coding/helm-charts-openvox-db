@@ -45,6 +45,9 @@ remains the image's responsibility and requires a reachable Puppet Server and
 appropriate certificate signing policy. `alternateServerNames` supplies
 `DNS_ALT_NAMES`. Pre-provisioned certificates can be mounted with `extraVolumes`
 and `extraVolumeMounts`, with matching configuration supplied through `customConfig`.
+Set `puppetServer.enabled=false` to skip waiting for an external Puppet Server
+and certificate enrollment (`USE_OPENVOXSERVER=false`). This supports standalone
+HTTP operation. The setting controls enrollment and does not deploy a server.
 
 Persistence defaults to a 10Gi ReadWriteOnce claim at
 `/opt/puppetlabs/server/data/puppetdb`. `persistence.existingClaim` reuses a claim.
@@ -172,6 +175,7 @@ tests; the replacement has not been deployed to Kubernetes.
 | `postgresql.shared.usernameKey` | `username` | Username key in the credential Secret |
 | `postgresql.shared.passwordKey` | `password` | Password key in the credential Secret |
 | `postgresql.external.hostname` | `""` | External PostgreSQL or CloudNativePG hostname |
+| `puppetServer.enabled` | `true` | Wait for an external Puppet Server and enroll TLS certificates |
 | `puppetServer.hostname` | `""` | Puppet Server hostname |
 | `puppetServer.port` | `8140` | Puppet Server port |
 | `javaArgs` | `""` | JVM arguments (extraEnv.PUPPETDB_JAVA_ARGS takes precedence) |

@@ -144,6 +144,8 @@ postgresql:
 
 # -- External Puppet Server used by the image for certificate enrollment
 puppetServer:
+  # -- Wait for an external Puppet Server and enroll TLS certificates through it
+  enabled: true
   hostname: ""
   port: 8140
 
