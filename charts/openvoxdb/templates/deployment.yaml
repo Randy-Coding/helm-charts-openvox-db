@@ -144,7 +144,7 @@ spec:
               containerPort: {{ .Values.metrics.port }}
           env:
             {{- $metricsEnv := dict "PUPPETDB_URL" .Values.metrics.url "PUPPETDB_SCRAPE_INTERVAL" .Values.metrics.interval "PUPPETDB_LISTEN_ADDRESS" (printf "0.0.0.0:%v" .Values.metrics.port) }}
-            {{- range $key, $value := mergeOverwrite $metricsEnv .Values.metrics.extraEnv }}
+            {{- range $key, $value := mergeOverwrite $metricsEnv (.Values.metrics.extraEnv | default dict) }}
             - name: {{ $key }}
               value: {{ $value | quote }}
             {{- end }}
