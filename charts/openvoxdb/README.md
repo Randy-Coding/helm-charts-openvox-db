@@ -52,6 +52,10 @@ HTTP operation. The setting controls enrollment and does not deploy a server.
 Persistence defaults to a 10Gi ReadWriteOnce claim at
 `/opt/puppetlabs/server/data/puppetdb`. `persistence.existingClaim` reuses a claim.
 Disabling persistence uses an emptyDir and loses data on pod replacement.
+A non-root `prepare-data` init container creates the log directory on the data
+volume before Java starts. It uses the OpenVoxDB image, UID 64604, and GID 0.
+The pod defaults to `fsGroup: 0` so the mounted volume is writable by that group.
+User-supplied `extraInitContainers` run after data preparation.
 
 Custom `.conf` files are mounted individually into `/etc/puppetlabs/puppetdb/conf.d`
 and changes trigger a rollout. SubPath-mounted files update when pods are replaced.
@@ -114,7 +118,7 @@ tests; the replacement has not been deployed to Kubernetes.
 | `securityContext.runAsNonRoot` | `true` |  |
 | `securityContext.allowPrivilegeEscalation` | `false` |  |
 | `securityContext.readOnlyRootFilesystem` | `true` |  |
-| `podSecurityContext` | `{}` | Pod security context |
+| `podSecurityContext` | `fsGroup: 0`, `fsGroupChangePolicy: OnRootMismatch` | Pod security context for writable OpenVoxDB data |
 | `nodeSelector` | `{}` | Node selector for pod assignment |
 | `tolerations` | `[]` | Tolerations for pod assignment |
 | `affinity` | `{}` | Affinity rules for pod assignment |
