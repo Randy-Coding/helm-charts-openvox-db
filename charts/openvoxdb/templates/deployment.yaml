@@ -170,7 +170,7 @@ spec:
         {{- if include "openvoxdb.readDatabaseEnabled" . }}
         - name: prepare-read-database
           image: "{{ .Values.postgresql.image.repository }}:{{ .Values.postgresql.image.tag }}"
-          imagePullPolicy: {{ .Values.postgresql.image.pullPolicy }}
+          imagePullPolicy: {{ .Subcharts.postgresql.Values.image.pullPolicy }}
           command:
             - sh
             - -ec
@@ -199,7 +199,7 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: {{ include "openvoxdb.postgresqlSecretName" . | quote }}
-                  key: {{ .Values.postgresql.auth.existingSecretPostgresPasswordKey | quote }}
+                  key: {{ .Subcharts.postgresql.Values.auth.existingSecretPostgresPasswordKey | quote }}
             - name: WRITE_USER
               value: {{ .Values.postgresql.auth.username | quote }}
             - name: READ_USER

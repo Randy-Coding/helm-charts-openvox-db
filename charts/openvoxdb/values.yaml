@@ -72,13 +72,9 @@ service:
 # -- HelmForge PostgreSQL subchart. Additional upstream values can be set here.
 postgresql:
   enabled: true
-  architecture: standalone
-  nameOverride: ""
-  fullnameOverride: ""
   image:
     repository: docker.io/library/postgres
     tag: 17.11-bookworm
-    pullPolicy: IfNotPresent
   auth:
     database: puppetdb
     username: puppetdb
@@ -87,27 +83,12 @@ postgresql:
     password: ""
     # Must contain both administrator and application passwords.
     existingSecret: ""
-    existingSecretPostgresPasswordKey: postgres-password
-    existingSecretUserPasswordKey: user-password
   standalone:
     resourcesPreset: none
-    resources: {}
     persistence:
-      enabled: true
-      accessModes: [ReadWriteOnce]
-      storageClass: ""
       size: 10Gi
   securityContext:
-    runAsUser: 999
-    runAsGroup: 999
-    runAsNonRoot: true
-    allowPrivilegeEscalation: false
     readOnlyRootFilesystem: true
-    capabilities:
-      drop: [ALL]
-  podSecurityContext:
-    fsGroup: 999
-    fsGroupChangePolicy: OnRootMismatch
   extraVolumes:
     - name: run
       emptyDir: {}
@@ -118,8 +99,6 @@ postgresql:
       mountPath: /var/run/postgresql
     - name: tmp
       mountPath: /tmp
-  service:
-    port: 5432
   initdb:
     scripts:
       10-openvoxdb-extensions.sh: |
