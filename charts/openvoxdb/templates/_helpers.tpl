@@ -65,6 +65,25 @@ PostgreSQL connection settings for bundled and external deployments.
 {{- end }}
 
 {{/*
+Managed read-only account for bundled PostgreSQL.
+*/}}
+{{- define "openvoxdb.readDatabaseEnabled" -}}
+{{- if and .Values.postgresql.enabled .Values.readDatabase.enabled -}}
+{{- if or (not .Values.readDatabase.username) (eq .Values.readDatabase.username .Values.postgresql.auth.username) (eq .Values.readDatabase.username "postgres") -}}
+{{- fail "readDatabase.username must be a separate nonempty account from postgres and postgresql.auth.username" -}}
+{{- end -}}
+{{- if hasKey .Values.customConfig "read-database.conf" -}}
+{{- fail "customConfig.read-database.conf conflicts with managed readDatabase configuration; disable readDatabase.enabled to supply your own" -}}
+{{- end -}}
+true
+{{- end -}}
+{{- end }}
+
+{{- define "openvoxdb.readDatabaseSecretName" -}}
+{{- default (printf "%s-read-database" (include "openvoxdb.fullname" . | trunc 49 | trimSuffix "-")) .Values.readDatabase.existingSecret -}}
+{{- end }}
+
+{{/*
 Create a default fully qualified app name.
 */}}
 {{- define "openvoxdb.fullname" -}}

@@ -2,6 +2,7 @@ suite: HelmForge PostgreSQL connection
 templates:
   - templates/deployment.yaml
   - templates/configmap.yaml
+  - templates/read-database-configmap.yaml
 tests:
   - it: rejects obsolete values that could silently enable a new database
     template: templates/deployment.yaml

@@ -145,6 +145,15 @@ postgresql:
     # Required when enabled is false.
     hostname: ""
 
+# -- Separate query account for bundled PostgreSQL. Provisioned before each OpenVoxDB start.
+readDatabase:
+  enabled: true
+  username: puppetdb_read
+  # Generated and retained when empty. Applies only without existingSecret.
+  password: ""
+  existingSecret: ""
+  passwordKey: password
+
 # -- External Puppet Server used by the image for certificate enrollment
 puppetServer:
   # -- Wait for an external Puppet Server and enroll TLS certificates through it
