@@ -2,117 +2,69 @@
 
 {{ template "chart.description" . }}
 
+## Usage
+
+From the repository root, download the pinned PostgreSQL dependency once:
+
+```sh
+helm dependency build charts/openvoxdb
+```
+
+Standalone HTTP operation:
+
+```sh
+helm install openvoxdb charts/openvoxdb --set puppetServer.enabled=false
+```
+
+Certificate enrollment through an existing OpenVox Server:
+
+```sh
+helm install openvoxdb charts/openvoxdb \
+  --set puppetServer.hostname=server.example.com
+```
+
+Enrollment is enabled by default and requires a server hostname and certificate
+signing policy. The chart deploys OpenVoxDB and PostgreSQL. HTTP uses port 8080;
+HTTPS uses port 8081 when certificates are configured.
+
 ## Configuration
 
-This standalone chart deploys OpenVoxDB with bundled or external PostgreSQL and an
-external Puppet Server connection. It installs no certificate jobs, Puppetboard,
-or OpenVox View.
-The image and interface defaults were adapted from `.resources/openvox-helm-chart`
-at commit `ad67791`.
+Bundled PostgreSQL uses HelmForge 2.0.5 with the official PostgreSQL 17.11 image.
+Passwords are generated when empty. A separate query account is provisioned
+before OpenVoxDB starts. Both components use persistent storage by default.
 
-Bundled PostgreSQL is provided by the pinned HelmForge PostgreSQL 2.0.5 subchart.
-It uses the official PostgreSQL 17.11 image, initializes `pg_trgm` and `pgcrypto`
-in the configured application database, and persists data in a 10Gi claim.
-Run `helm dependency build charts/openvoxdb` before linting, testing, or installing
-from this source directory. The release workflow includes the dependency in the
-published chart.
+Additional HelmForge options can be set under `postgresql.*`. Omitted settings
+inherit the pinned subchart's defaults, including standalone mode and port 5432.
 
-Configure the subchart through native `postgresql.*` values, including
-`auth.database`, `auth.username`, `auth.password`, and
-`standalone.persistence`. OpenVoxDB follows the subchart's service name, port,
-database, application username, and password Secret. Replication mode uses the
-writable primary service. Parent name overrides do not rename the subchart;
-use `postgresql.nameOverride` or `postgresql.fullnameOverride`.
+| Value | Default | Purpose |
+| --- | --- | --- |
+| `puppetServer.enabled` | `true` | Enable server enrollment |
+| `puppetServer.hostname` | `""` | Existing OpenVox Server address |
+| `postgresql.enabled` | `true` | Deploy bundled PostgreSQL |
+| `postgresql.image.tag` | `17.11-bookworm` | Pinned PostgreSQL image |
+| `postgresql.auth.database` | `puppetdb` | Application database |
+| `postgresql.auth.username` | `puppetdb` | Application writer |
+| `postgresql.auth.postgresPassword` | `""` | Administrator password, generated when empty |
+| `postgresql.auth.password` | `""` | Writer password, generated when empty |
+| `postgresql.auth.existingSecret` | `""` | Existing database password Secret |
+| `postgresql.standalone.resourcesPreset` | `none` | PostgreSQL resource preset |
+| `postgresql.standalone.persistence.size` | `10Gi` | PostgreSQL storage |
+| `readDatabase.enabled` | `true` | Provision a separate query account |
+| `persistence.size` | `10Gi` | OpenVoxDB storage |
+| `persistence.existingClaim` | `""` | Reuse OpenVoxDB storage |
+| `service.type` | `ClusterIP` | ClusterIP, NodePort, or LoadBalancer |
+| `service.httpPort` | `8080` | HTTP service port |
+| `service.port` | `8081` | HTTPS service port |
+| `metrics.enabled` | `false` | Enable the exporter |
+| `networkPolicy.enabled` | `false` | Enable traffic restrictions |
 
-HelmForge creates separate administrator and application passwords when empty.
-An existing `postgresql.auth.existingSecret` must contain `postgres-password`
-and `user-password`, or the configured `auth.existingSecret*PasswordKey` keys.
-Replication also requires the replication password key. OpenVoxDB reads the
-application password only. Initialization scripts run only on a fresh data directory.
-The PostgreSQL image runs as UID and GID 999 with a read-only root filesystem
-and writable mounts for data, runtime sockets, and temporary files.
+See [values.yaml](values.yaml) for chart defaults,
+[HelmForge documentation](https://helmforge.dev/docs/charts/postgresql)
+for inherited PostgreSQL options, and
+[MIGRATION.md](MIGRATION.md) for database configuration and migration details.
 
-For an external service such as CloudNativePG, set `postgresql.enabled=false`,
-`postgresql.external.hostname`, and `postgresql.shared.existingSecret`.
-The `postgresql.shared.*` values apply only to external connections. External
-credential Secrets retain the `username` and `password` keys by default.
-`extraEnv` overrides generated environment variables. `extraEnvSecret` supports
-additional secret environment variables. Explicit environment values take
-precedence over values imported from `extraEnvSecret`.
+## Validation
 
-HTTPS is exposed at service port 8081 and HTTP at 8080. Certificate enrollment
-remains the image's responsibility and requires a reachable Puppet Server and
-appropriate certificate signing policy. `alternateServerNames` supplies
-`DNS_ALT_NAMES`. Pre-provisioned certificates can be mounted with `extraVolumes`
-and `extraVolumeMounts`, with matching configuration supplied through `customConfig`.
-Set `puppetServer.enabled=false` to skip waiting for an external Puppet Server
-and certificate enrollment (`USE_OPENVOXSERVER=false`). This supports standalone
-HTTP operation. The setting controls enrollment and does not deploy a server.
-
-Persistence defaults to a 10Gi ReadWriteOnce claim at
-`/opt/puppetlabs/server/data/puppetdb`. `persistence.existingClaim` reuses a claim.
-Disabling persistence uses an emptyDir and loses data on pod replacement.
-A non-root `prepare-data` init container creates the log directory on the data
-volume before Java starts. It uses the OpenVoxDB image, UID 64604, and GID 0.
-The pod defaults to `fsGroup: 0` so the mounted volume is writable by that group.
-User-supplied `extraInitContainers` run after data preparation.
-
-Bundled PostgreSQL uses a separate `puppetdb_read` account for the query pool.
-Configure it through `readDatabase.*`; the password is stored in a separate
-Secret and retained across Helm upgrades. An existing Secret is supported through
-`readDatabase.existingSecret` and `readDatabase.passwordKey`.
-A non-root `prepare-read-database` init container connects as the PostgreSQL
-administrator to create or update this account before OpenVoxDB starts. It grants
-SELECT on existing tables and default read permissions on future migration objects,
-and grants the read role to the writer for partition cleanup. This also supports
-databases that have already completed migrations, without resetting their data.
-The administrator password is available only to this provisioning container.
-Generated `read-database.conf` references environment variables for credentials.
-Set `readDatabase.enabled=false` to supply your own read-pool configuration.
-Automatic provisioning applies only to bundled PostgreSQL. External databases
-can use `customConfig` to configure an independently managed read-only account.
-Custom `.conf` files are mounted individually into `/etc/puppetlabs/puppetdb/conf.d`
-and changes trigger a rollout. SubPath-mounted files update when pods are replaced.
-
-Enabling NetworkPolicy denies traffic except the supplied
-`additionalIngressRules` and `additionalEgressRules`. Rules must allow the required
-clients, DNS, PostgreSQL, Puppet Server, and monitoring traffic.
-
-`metrics.enabled` adds a Prometheus exporter and its service port. Its default
-query URL uses local HTTP. HTTPS can be configured through `metrics.url`,
-`metrics.extraEnv`, and certificate volume mounts. `metrics.serviceMonitor.enabled`
-requires the Prometheus Operator ServiceMonitor CRD and `metrics.enabled: true`.
-
-## Migration from 0.1.x
-
-This is a breaking configuration and storage change. Replace
-`postgresql.internal.enabled` with `postgresql.enabled`, move internal image
-and scheduling settings directly under `postgresql`, and move internal resources
-and persistence settings under `postgresql.standalone`. Bundled database and
-username settings now use `postgresql.auth.database` and `auth.username`.
-The former internal password becomes `postgresql.auth.password`; an administrator
-password is configured separately through `auth.postgresPassword`.
-
-Existing installations require a database migration before upgrading. The former
-standalone PVC and Secret are replaced by HelmForge's StatefulSet claim
-(`data-<postgresql-statefulset>-0`) and auth Secret. HelmForge 2.0.5 does not expose
-an `existingClaim` option. A normal Helm upgrade does not move existing data or
-adapt the old credentials. The old database initialized `puppetdb` as the
-bootstrap superuser, while HelmForge expects a `postgres` administrator and a
-separate application account. Preserve the old PVC and credentials and migrate
-the database into the new instance before retiring the old resources.
-
-PostgreSQL remains on version 17.11. Choosing a new chart does not perform a
-PostgreSQL major-version upgrade. Existing external connections retain their
-`shared` and `external` settings and require the new enable flag.
-
-## Runtime validation
-
-The chart retains `runAsNonRoot: true`, dropped capabilities, no privilege
-escalation, and a read-only root filesystem. It supplies writable data and `/tmp`
-mounts and includes no privileged directory-setup init container. Certificate
-enrollment and complete service startup require runtime validation against an
-OpenVox Server. HelmForge integration is verified by local rendering and unit
-tests; the replacement has not been deployed to Kubernetes.
-
-{{ template "chart.valuesSection" . }}
+Standalone startup and facts submission/query have passed runtime testing.
+Persistence across restarts, upgrades, and certificate enrollment remain unverified.
+See [TESTING.md](TESTING.md) for local tests and the API smoke test.

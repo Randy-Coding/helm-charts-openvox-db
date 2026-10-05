@@ -9,7 +9,7 @@ This repository provides modular, independently installable charts for each comp
 | Chart | Description | Status |
 |-------|-------------|--------|
 | [openvox-server](charts/openvox-server/) | OpenVox Server (Masters + Compilers + CA) | Planned |
-| [openvoxdb](charts/openvoxdb/) | OpenVox DB (PuppetDB) | Implemented, runtime validation pending |
+| [openvoxdb](charts/openvoxdb/) | OpenVox DB (PuppetDB) | Standalone API smoke test passed |
 | [openvox-r10k](charts/openvox-r10k/) | R10K standalone deployment for code sync | Planned |
 | [openvox-postgresql](charts/openvox-postgresql/) | PostgreSQL via CloudNativePG | Planned |
 | [openvoxview](charts/openvoxview/) | OpenVox View - Web UI for OpenVox DB | Available |
